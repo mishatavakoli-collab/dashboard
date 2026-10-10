@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>داشبورد کنترل پروژه — نسخه ۱۰.۱</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#273449;
+    --border:#334155; --text:#e2e8f0; --muted:#94a3b8;
+    --accent:#38bdf8; --green:#22c55e; --yellow:#eab308;
+    --orange:#f97316; --red:#ef4444; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Vazirmatn',Tahoma,sans-serif;
+    background:linear-gradient(135deg,#0f172a 0%,#1a1f35 100%);
+    color:var(--text); min-height:100vh; padding:20px; line-height:1.7;
+  }
+  .container{max-width:1700px;margin:0 auto}
+  .num{font-family:'Vazirmatn',Tahoma,sans-serif; direction:ltr; unicode-bidi:embed; font-variant-numeric:tabular-nums;}
+
+  header{
+    background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(167,139,250,.15));
+    border:1px solid var(--border); border-radius:20px; padding:24px 30px;
+    margin-bottom:22px;
+  }
+  header h1{
+    font-size:24px; font-weight:800;
+    background:linear-gradient(90deg,#38bdf8,#a78bfa,#22d3ee);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  header p{color:var(--muted); font-size:13px; margin-top:6px}
+  .header-badge{
+    display:inline-block; background:rgba(34,197,94,.15); color:var(--green);
+    padding:4px 14px; border-radius:20px; font-size:11px; font-weight:600;
+    margin-top:10px; border:1px solid rgba(34,197,94,.3);
+  }
+
+  .main-tabs{
+    display:flex; gap:8px; margin-bottom:22px;
+    background:var(--card); padding:6px; border-radius:14px;
+    border:1px solid var(--border);
+  }
+  .main-tab{
+    flex:1; padding:11px 18px; border:none; border-radius:10px;
+    background:transparent; color:var(--muted);
+    cursor:pointer; font-size:13px; font-weight:700;
+    transition:.25s; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .main-tab:hover{color:var(--text); background:rgba(56,189,248,.08)}
+  .main-tab.active{
+    background:linear-gradient(135deg,#38bdf8,#22d3ee);
+    color:#0f172a; box-shadow:0 4px 15px rgba(56,189,248,.3);
+  }
+
+  .view{display:none}
+  .view.active{display:block; animation:fadeIn .35s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 3fr;
+    gap:14px; margin-bottom:22px;
+  }
+  .kpi{
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:16px 20px; position:relative; overflow:hidden; transition:.3s;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .kpi:hover{transform:translateY(-3px); border-color:var(--accent)}
+  .kpi::after{content:''; position:absolute; top:0; right:0; width:4px; height:100%; background:var(--accent)}
+  .kpi.g::after{background:var(--green)}
+  .kpi.y::after{background:var(--yellow)}
+  .kpi.o::after{background:var(--orange)}
+  .kpi.p::after{background:var(--purple)}
+  .kpi.r::after{background:var(--red)}
+
+  .kpi-combo{display:flex; flex-direction:column; gap:8px}
+  .kpi-combo-item{
+    display:flex; flex-direction:column; gap:1px;
+    padding-bottom:8px;
+    border-bottom:1px dashed rgba(51,65,85,.5);
+  }
+  .kpi-combo-item:last-child{border-bottom:none; padding-bottom:0}
+
+  .kpi-label{
+    font-size:10.5px; color:var(--muted); font-weight:500;
+    display:flex; align-items:center; gap:5px;
+  }
+  .kpi-label .kpi-dot{
+    width:5px; height:5px; border-radius:50%;
+    display:inline-block;
+  }
+  .kpi-value{font-size:16px; font-weight:800; letter-spacing:-.3px; line-height:1.25}
+  .kpi-value small{font-size:10px; color:var(--muted); font-weight:400}
+  .kpi-sub{font-size:10px; color:var(--muted); margin-top:2px}
+
+  @media(max-width:1100px){
+    .kpi-grid{grid-template-columns:1fr 1fr}
+    .gauge-panel{grid-column:span 2}
+  }
+  @media(max-width:700px){
+    .kpi-grid{grid-template-columns:1fr}
+    .gauge-panel{grid-column:span 1}
+  }
+
+  .kpi-grid-4{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px; margin-bottom:22px;
+  }
+  @media(max-width:900px){
+    .kpi-grid-4{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:480px){
+    .kpi-grid-4{grid-template-columns:1fr}
+  }
+
+  .gauge-panel{
+    background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(167,139,250,.08));
+    border:1px solid var(--border); border-radius:16px;
+    padding:18px 24px;
+    position:relative; overflow:hidden;
+  }
+  .gauge-panel::after{
+    content:''; position:absolute; top:0; right:0; width:4px; height:100%;
+    background:linear-gradient(180deg,#22c55e,#38bdf8,#a78bfa,#f97316);
+  }
+  .gauge-panel-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; flex-wrap:wrap; gap:12px;
+  }
+  .gauge-panel-head h3{
+    font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .gauge-panel-head h3::before{content:''; width:4px; height:16px; background:var(--green); border-radius:2px}
+
+  .gauge-filters{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .gauge-filters select{
+    background:#0f172a; color:var(--text); border:1px solid var(--border);
+    padding:6px 12px; border-radius:8px; font-family:inherit; font-size:11.5px;
+    cursor:pointer; outline:none;
+  }
+  .gauge-filters select:focus{border-color:var(--accent)}
+
+  .gauge-mode-tabs{
+    display:flex; gap:4px; background:#0f172a; padding:4px;
+    border-radius:10px; border:1px solid var(--border); flex-wrap:wrap;
+  }
+  .gauge-mode-tabs button{
+    padding:6px 14px; border:none; border-radius:7px;
+    background:transparent; color:var(--muted); cursor:pointer;
+    font-family:inherit; font-size:11.5px; font-weight:600; transition:.2s;
+  }
+  .gauge-mode-tabs button:hover{color:var(--text)}
+  .gauge-mode-tabs button.active{
+    background:linear-gradient(135deg,#38bdf8,#22d3ee);
+    color:#0f172a;
+  }
+
+  .gauge-body{
+    display:flex; align-items:center; gap:26px; flex-wrap:wrap;
+  }
+  .gauge-canvas-wrap{
+    position:relative; width:280px; height:180px; flex-shrink:0;
+  }
+  .gauge-center{
+    position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+    text-align:center; pointer-events:none; width:100%;
+  }
+  .gauge-pct{font-size:28px; font-weight:800; line-height:1}
+  .gauge-pct-lbl{font-size:11px; color:var(--muted); margin-top:4px}
+  .gauge-money{font-size:12px; color:#cbd5e1; margin-top:3px; font-weight:600}
+
+  .gauge-info{flex:1; min-width:320px}
+  .gauge-rows{display:flex; flex-direction:column; gap:8px}
+  .gauge-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11.5px; padding:8px 12px; border-radius:8px;
+    background:rgba(15,23,42,.55); border:1px solid var(--border);
+  }
+  .gauge-row .lbl{color:var(--muted)}
+  .gauge-row .val{font-weight:700}
+  .gauge-row.highlight{
+    background:rgba(56,189,248,.1);
+    border-color:rgba(56,189,248,.4);
+  }
+
+  .gauge-diffs{
+    margin-top:12px;
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .diff-card{
+    background:rgba(15,23,42,.65);
+    border:1px dashed var(--border);
+    border-radius:10px; padding:10px 14px;
+  }
+  .diff-card.highlight{
+    border-style:solid;
+    border-color:rgba(249,115,22,.5);
+    background:rgba(249,115,22,.08);
+  }
+  .diff-card.danger{
+    border-style:solid;
+    border-color:rgba(239,68,68,.5);
+    background:rgba(239,68,68,.08);
+  }
+  .diff-lbl{
+    font-size:10.5px; color:var(--muted); margin-bottom:4px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .diff-val{font-size:16px; font-weight:800; color:var(--text)}
+  .diff-val.red{color:#f87171}
+  .diff-val.orange{color:#fb923c}
+  .diff-sub{font-size:10px; color:var(--muted); margin-top:2px}
+
+  @media(max-width:1100px){
+    .gauge-body{flex-direction:column; align-items:stretch}
+    .gauge-canvas-wrap{margin:0 auto}
+  }
+
+  .charts-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-bottom:22px;
+  }
+  .chart-card{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:18px;
+  }
+  .chart-card.full{grid-column:1 / -1}
+  .chart-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; flex-wrap:wrap; gap:10px;
+  }
+  .chart-head h3{
+    font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .chart-head h3::before{content:''; width:4px; height:16px; background:var(--accent); border-radius:2px}
+  .chart-controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .chart-controls select{
+    background:#0f172a; color:var(--text); border:1px solid var(--border);
+    padding:5px 12px; border-radius:8px; font-family:inherit; font-size:11.5px;
+    cursor:pointer; outline:none;
+  }
+  .toggle-group{
+    display:flex; gap:4px; background:#0f172a; padding:3px;
+    border-radius:10px; border:1px solid var(--border);
+  }
+  .toggle-group button{
+    padding:5px 12px; border:none; border-radius:7px;
+    background:transparent; color:var(--muted); cursor:pointer;
+    font-family:inherit; font-size:11px; font-weight:600; transition:.2s;
+  }
+  .toggle-group button.active{
+    background:linear-gradient(135deg,#38bdf8,#22d3ee);
+    color:#0f172a;
+  }
+  .chart-wrap{position:relative; height:290px}
+  .chart-wrap.tall{height:340px}
+
+  @media(max-width:900px){
+    .charts-grid{grid-template-columns:1fr}
+  }
+
+  .sub-tabs{
+    display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;
+    padding-bottom:4px; flex-wrap:wrap;
+  }
+  .sub-tab{
+    padding:8px 16px; border-radius:10px; background:var(--card);
+    border:1px solid var(--border); color:var(--muted);
+    cursor:pointer; font-size:12px; font-weight:600;
+    white-space:nowrap; transition:.2s; font-family:inherit;
+  }
+  .sub-tab:hover{background:var(--card2); color:var(--text)}
+  .sub-tab.active{
+    background:linear-gradient(135deg,#38bdf8,#22d3ee);
+    color:#0f172a; border-color:transparent;
+  }
+
+  .filter-bar{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:12px 16px; margin-bottom:16px;
+  }
+  .filter-bar label{font-size:12px; color:var(--muted); font-weight:600}
+  .filter-bar select{
+    background:#0f172a; color:var(--text); border:1px solid var(--border);
+    padding:7px 12px; border-radius:8px; font-family:inherit; font-size:12px;
+    cursor:pointer; outline:none;
+  }
+  .filter-bar select:focus{border-color:var(--accent)}
+  .filter-chip{
+    background:rgba(56,189,248,.1); color:var(--accent);
+    border:1px solid rgba(56,189,248,.3);
+    padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600;
+  }
+
+  .group{display:none}
+  .group.active{display:block; animation:fadeIn .35s}
+
+  .group-summary{
+    background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(167,139,250,.08));
+    border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin-bottom:18px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;
+  }
+  .gs-item{
+    background:rgba(15,23,42,.6); border-radius:10px;
+    padding:12px 14px; border:1px solid var(--border);
+  }
+  .gs-lbl{font-size:10.5px; color:var(--muted); margin-bottom:4px}
+  .gs-val{font-size:15px; font-weight:800; color:var(--accent)}
+  .gs-val.g{color:var(--green)}
+  .gs-val.o{color:var(--orange)}
+  .gs-val.p{color:var(--purple)}
+  .gs-val.y{color:var(--yellow)}
+
+  .table-wrap{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; overflow:hidden; margin-bottom:22px;
+  }
+  table{width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed}
+  thead{background:linear-gradient(135deg,#1e3a5f,#2d3748)}
+  th{
+    padding:11px 8px; text-align:center; font-weight:700; font-size:11px;
+    color:#cbd5e1; border-bottom:2px solid var(--border); white-space:nowrap;
+  }
+  td{
+    padding:9px 8px; text-align:center;
+    border-bottom:1px solid rgba(51,65,85,.5); color:var(--text);
+    vertical-align:middle; word-wrap:break-word;
+  }
+
+  tbody tr.main-row{transition:.15s; cursor:pointer}
+  tbody tr.main-row:hover{background:rgba(56,189,248,.06)}
+  tbody tr.detail-row{background:rgba(15,23,42,.7); display:none}
+  tbody tr.detail-row.open{display:table-row}
+  tbody tr.detail-row td{padding:0; border-bottom:2px solid var(--border); text-align:right}
+
+  .row-num{color:var(--muted); font-weight:600; text-align:center; font-size:11px}
+  .title-cell{
+    text-align:right; font-weight:500; font-size:11.5px;
+    line-height:1.5; padding-right:10px;
+  }
+
+  .mini-progress{min-width:90px; display:inline-block; width:100%}
+  .mini-progress .bar{
+    height:7px; background:#0f172a; border-radius:4px;
+    overflow:hidden; margin-top:3px;
+  }
+  .mini-progress .fill{height:100%; border-radius:4px; transition:width .6s}
+  .mini-progress .pct{font-size:11px; font-weight:700}
+  .mini-progress .mil{font-size:9.5px; color:#94a3b8; font-weight:500}
+  .fill.phys{background:linear-gradient(90deg,#22c55e,#4ade80)}
+  .fill.sent{background:linear-gradient(90deg,#38bdf8,#22d3ee)}
+  .fill.tech{background:linear-gradient(90deg,#ef4444,#f87171)}
+  .fill.fin{background:linear-gradient(90deg,#f97316,#fb923c)}
+  .fill.cost{background:linear-gradient(90deg,#a78bfa,#c4b5fd)}
+
+  .money{
+    text-align:center; font-weight:600; font-size:11.5px;
+    font-variant-numeric:tabular-nums; direction:ltr;
+  }
+  .money small{font-size:9.5px; color:#64748b; font-weight:400}
+
+  .ratio-wrap{
+    display:inline-flex; align-items:center; gap:5px;
+    font-weight:700; font-size:11.5px;
+  }
+  .ratio{font-weight:700}
+  .ratio.good{color:#4ade80}
+  .ratio.warn{color:#facc15}
+  .ratio.bad{color:#f87171}
+  .ratio-icon{font-size:13px; line-height:1}
+
+  .ext-warn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%;
+    background:rgba(234,179,8,.15); color:#facc15;
+    font-size:12px; margin-right:4px;
+    border:1px solid rgba(234,179,8,.3);
+    cursor:help;
+  }
+  .ext-warn.critical{
+    background:rgba(239,68,68,.15); color:#f87171;
+    border-color:rgba(239,68,68,.3);
+    animation:pulse 1.5s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+  .detail-panel{
+    padding:18px 22px; background:#0f172a;
+    display:grid; grid-template-columns:1fr 1fr; gap:16px;
+  }
+  @media(max-width:900px){ .detail-panel{grid-template-columns:1fr} }
+
+  .detail-section{
+    background:var(--card2); border-radius:10px; padding:14px;
+    border:1px solid var(--border);
+  }
+  .detail-section h4{
+    font-size:12px; font-weight:700; color:var(--accent);
+    margin-bottom:10px; display:flex; align-items:center; gap:6px;
+  }
+  .detail-section h4::before{content:''; width:3px; height:13px; background:var(--accent); border-radius:2px}
+
+  .detail-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  .detail-item{display:flex; flex-direction:column; gap:2px}
+  .detail-item .lbl{font-size:10px; color:var(--muted)}
+  .detail-item .val{font-size:12px; font-weight:600}
+
+  .empty-hint{
+    color:#64748b; font-size:11.5px;
+    padding:20px; text-align:center;
+    background:rgba(15,23,42,.5);
+    border-radius:8px; border:1px dashed var(--border);
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.7);
+    display:none; align-items:center; justify-content:center;
+    z-index:1000; padding:20px; backdrop-filter:blur(4px);
+  }
+  .modal-overlay.open{display:flex}
+  .modal{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; max-width:520px; width:100%;
+    padding:22px; animation:fadeIn .3s;
+    max-height:90vh; overflow-y:auto;
+  }
+  .modal-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);
+  }
+  .modal-head h3{font-size:15px; color:var(--accent)}
+  .modal-close{
+    background:transparent; border:none; color:var(--muted);
+    font-size:20px; cursor:pointer; padding:0 4px; font-family:inherit;
+  }
+  .modal-close:hover{color:var(--red)}
+
+  ::-webkit-scrollbar{width:8px; height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:#475569}
+
+  @media(max-width:768px){
+    body{padding:10px}
+    .gauge-canvas-wrap{width:240px; height:160px}
+    .gauge-diffs{grid-template-columns:1fr}
+    table{font-size:10.5px}
+    th,td{padding:7px 4px}
+    .main-tab{font-size:11px; padding:9px 10px}
+    .chart-wrap{height:240px}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>📊 داشبورد مدیریت و کنترل پروژه</h1>
+    <p>گزارش پیشرفت پروژه‌ها  موسسه پژوهشی سوانح طبیعی — مرداد و نیمه شهریور ۱۴۰۵</p>
+    <span class="header-badge">● نسخه ۱۰.۱ — میلاد علیرضایی</span>
+  </header>
+
+  <div class="main-tabs">
+    <button class="main-tab active" data-view="external">🌐 پروژه‌های برون‌سازمانی</button>
+    <button class="main-tab" data-view="internal">🏢 پروژه‌های درون‌سازمانی</button>
+  </div>
+
+  <div class="view active" id="view-external">
+
+    <div class="kpi-grid">
+      <div class="kpi p">
+        <div class="kpi-combo">
+          <div class="kpi-combo-item">
+            <div class="kpi-label"><span class="kpi-dot" style="background:#a78bfa"></span>تعداد قراردادهای جاری</div>
+            <div class="kpi-value" id="kpiCount">—</div>
+            <div class="kpi-sub" id="kpiCountSub">—</div>
+          </div>
+          <div class="kpi-combo-item">
+            <div class="kpi-label"><span class="kpi-dot" style="background:#38bdf8"></span>ارزش کل قراردادها</div>
+            <div class="kpi-value" id="kpiValue" style="color:#38bdf8">—</div>
+          </div>
+          <div class="kpi-combo-item">
+            <div class="kpi-label"><span class="kpi-dot" style="background:#f97316"></span>هزینه ثبت‌شده کل</div>
+            <div class="kpi-value" id="kpiCost" style="color:#f97316">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi y">
+        <div class="kpi-combo">
+          <div class="kpi-combo-item">
+            <div class="kpi-label"><span class="kpi-dot" style="background:#eab308"></span>برون‌سپاری ریالی</div>
+            <div class="kpi-value" id="kpiOutRial" style="color:#eab308">—</div>
+            <div class="kpi-sub" id="kpiOutRialSub">—</div>
+          </div>
+          <div class="kpi-combo-item">
+            <div class="kpi-label"><span class="kpi-dot" style="background:#22c55e"></span>برون‌سپاری فیزیکی</div>
+            <div class="kpi-value" id="kpiOutPhys" style="color:#22c55e">—</div>
+            <div class="kpi-sub" id="kpiOutPhysSub">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gauge-panel">
+        <div class="gauge-panel-head">
+          <h3>پیشرفت به تناسب — تحلیل مرحله‌ای</h3>
+          <div class="gauge-filters">
+            <select id="gaugeGroupFilter"><option value="all">همه گروه‌ها</option></select>
+            <select id="gaugeEmployerFilter">
+              <option value="all">همه کارفرماها</option>
+              <option value="وابسته">وابسته</option>
+              <option value="غیر وابسته">غیروابسته</option>
+              <option value="دفترمرکزی">دفتر مرکزی</option>
+              <option value="بنیاد استانها">بنیاد استان‌ها</option>
+              <option value="شرکتها">شرکت‌ها</option>
+              <option value="سایر">سایر</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="gauge-body">
+          <div class="gauge-canvas-wrap">
+            <canvas id="gaugeChart"></canvas>
+            <div class="gauge-center">
+              <div class="gauge-pct" id="gaugePct">—</div>
+              <div class="gauge-pct-lbl" id="gaugePctLbl">—</div>
+              <div class="gauge-money" id="gaugeMoney">—</div>
+            </div>
+          </div>
+
+          <div class="gauge-info">
+            <div class="gauge-mode-tabs" id="gaugeModeTabs">
+              <button data-mode="sent" class="active">ارسال شده</button>
+              <button data-mode="tech">تایید فنی</button>
+              <button data-mode="fin">تایید مالی</button>
+              <button data-mode="cost">هزینه ثبت‌شده</button>
+            </div>
+
+            <div class="gauge-rows" style="margin-top:14px">
+              <div class="gauge-row">
+                <span class="lbl">💰 ارزش قرارداد (فیلتر شده)</span>
+                <span class="val num" style="color:#38bdf8" id="gaugeTotalValue">—</span>
+              </div>
+              <div class="gauge-row highlight">
+                <span class="lbl" id="gaugeStageLbl">📤 مبلغ ارسال شده</span>
+                <span class="val num" style="color:#22c55e" id="gaugeStageValue">—</span>
+              </div>
+            </div>
+
+            <div class="gauge-diffs">
+              <div class="diff-card" id="diffSentTech">
+                <div class="diff-lbl">🔻 مابه‌تفاوت ارسال شده و تایید فنی</div>
+                <div class="diff-val num" id="diffSentTechVal">—</div>
+                <div class="diff-sub" id="diffSentTechSub">درگیر تاییدیه فنی</div>
+              </div>
+              <div class="diff-card" id="diffTechFin">
+                <div class="diff-lbl">🔻 مابه‌تفاوت تایید فنی و تایید مالی</div>
+                <div class="diff-val num" id="diffTechFinVal">—</div>
+                <div class="diff-sub" id="diffTechFinSub">درگیر تاییدیه مالی</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>مقایسه گروه‌ها</h3>
+          <div class="toggle-group" id="toggleGroup">
+            <button data-mode="value" class="active">مبلغ</button>
+            <button data-mode="count">تعداد</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chartGroup"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>مقایسه کارفرماها</h3>
+          <div class="toggle-group" id="toggleEmployer">
+            <button data-mode="value" class="active">مبلغ</button>
+            <button data-mode="count">تعداد</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chartEmployer"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>نوع کارفرما</h3>
+          <div class="toggle-group" id="toggleDependency">
+            <button data-mode="count" class="active">تعداد</button>
+            <button data-mode="value">مبلغ</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chartDependency"></canvas></div>
+      </div>
+
+      <div class="chart-card full">
+        <div class="chart-head">
+          <h3>هزینه - درآمد ماهانه</h3>
+          <div class="chart-controls">
+            <select id="monthlyGroupFilter"><option value="all">همه گروه‌ها</option></select>
+            <div class="toggle-group" id="toggleMonthly">
+              <button data-mode="forecast" class="active">پیش‌بینی</button>
+              <button data-mode="actual">محقق‌شده</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap tall"><canvas id="chartMonthly"></canvas></div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <label>🔎 فیلتر کارفرما:</label>
+      <select id="filterEmployerType">
+        <option value="all">همه</option>
+        <option value="وابسته">وابسته</option>
+        <option value="غیر وابسته">غیروابسته</option>
+        <option value="دفترمرکزی">دفتر مرکزی</option>
+        <option value="بنیاد استانها">بنیاد استان‌ها</option>
+        <option value="شرکتها">شرکت‌ها</option>
+        <option value="سایر">سایر</option>
+      </select>
+      <span class="filter-chip" id="filterCount">—</span>
+    </div>
+
+    <div class="sub-tabs" id="tabs"></div>
+    <div id="groupsContainer"></div>
+  </div>
+
+  <div class="view" id="view-internal">
+    <div class="kpi-grid-4" id="kpiGridInternal"></div>
+    <div class="sub-tabs" id="internalTabs"></div>
+    <div id="internalGroupsContainer"></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">جزئیات</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const FIXED_GROUPS = [
+  "مقاوم سازی","بازسازی","مخاطرات زمین‌شناختی","مخاطرات هیدرولوژیکی",
+  "مدیریت بحران","تاب آوری","بافت ناکارآمد","توسعه روستایی",
+  "دفتر فنی","معاونت آموزش","بنیاد تک"
+];
+
+const RAW = [
+  // ===== مقاوم سازی =====
+  {g:"مقاوم سازی", r:1, t:"خدمات نظارت عالیه ماهانه حین اجرا، نظارت کارگاهی جهت احداث نیروگاه خورشیدی 7+3 مگاواتی سیمان شهرکرد", k:"سیمان شهرکرد", ec:"شرکتها", et:"وابسته", n:"9649/1403", d:"1403/11/14", m:4, ext:"1405/05/31", v:45083.965256, outRial:19940, outPhys:45083.965256, prog:0.9674899106, sent:0.9674899106, tech:0.9674899106, fin:0.9674899106, remain:1465.683741, sentValue:43618.281515, techValue:43618.281515, finValue:43618.281515, cost:17252.209201, ratio:0.3955270268, contractors:[]},
+  {g:"مقاوم سازی", r:2, t:"ارائه خدمات پژوهشی، مطالعاتی و مشاوره‌ای در زمینه تحقیق، طراحی، آموزش و نظارت ساختمان‌های بنایی مسلح", k:"دفترمرکزی", ec:"دفترمرکزی", et:"وابسته", n:"3012/ص", d:"1402/05/10", m:18, ext:"1405/12/29", v:29304, outRial:24420, outPhys:29304, prog:0.9, sent:0.9, tech:0.9, fin:0.9, remain:2930.4, sentValue:26373.6, techValue:26373.6, finValue:26373.6, cost:26243.898943, ratio:0.9950821633, contractors:[]},
+  {g:"مقاوم سازی", r:3, t:"برنامه مدیریت خطر مناطق شهر تهران", k:"سازمان پیشگیری تهران", ec:"سایر", et:"غیر وابسته", n:"190/1093470", d:"1402/09/27", m:12, ext:"1405/03/31", v:36250, outRial:24500, outPhys:36250, prog:0.85, sent:0.85, tech:0.73, fin:0.6, remain:14500, sentValue:30812.5, techValue:26462.5, finValue:21750, cost:17251.621059, ratio:0.7931779797, contractors:[]},
+  {g:"مقاوم سازی", r:4, t:"طرح پژوهشی ارزیابی فنی و اقتصادی روش‌های رایج ساخت و ساز روستایی با الویت مصالح بومی", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"2909/ص", d:"1404/06/22", m:14, ext:"-", v:13093.223311, outRial:3927.9669933, outPhys:3927.9669933, prog:0.35, sent:0.35, tech:0, fin:0.15, remain:11129.23981435, sentValue:4582.62815885, techValue:0, finValue:1963.98349665, cost:2875.441217, ratio:1.464086242, contractors:[]},
+
+  // ===== بازسازی =====
+  {g:"بازسازی", r:5, t:"تاریخ شفاهی مدیریت بحران ایران با تأکید بر مرحله پاسخ و بازسازی و بازتوانی زلزله سال 1385 بروجرد (دشت سیلاخور)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"10388/ص", d:"1401/12/21", m:18, ext:"1405/06/31", v:8609.843938, outRial:0, outPhys:0, prog:1, sent:1, tech:0.85, fin:0.85, remain:1291.4765907, sentValue:8609.843938, techValue:7318.3673473, finValue:7318.3673473, cost:8708.03397, ratio:1.1898875195, contractors:[]},
+  {g:"بازسازی", r:6, t:"تاریخ شفاهی مدیریت بحران ایران با تأکید بر مرحله پاسخ و بازسازی و بازتوانی - زلزله سال 1381 آوج (بوئین زهرا)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"10386/ص", d:"1401/12/21", m:18, ext:"1405/06/31", v:8162.064826, outRial:0, outPhys:0, prog:1, sent:1, tech:0.65, fin:0.65, remain:2856.7226891, sentValue:8162.064826, techValue:5305.3421369, finValue:5305.3421369, cost:8022.608809, ratio:1.5121755774, contractors:[]},
+  {g:"بازسازی", r:7, t:"مستندسازی بازسازی پس از زلزله سال 1392 بوشهر", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"9574/ص", d:"1400/12/8", m:12, ext:"1405/06/31", v:4870, outRial:0, outPhys:0, prog:1, sent:1, tech:0.85, fin:0.85, remain:730.5, sentValue:4870, techValue:4139.5, finValue:4139.5, cost:4229.840331, ratio:1.0218239717, contractors:[]},
+  {g:"بازسازی", r:8, t:"تدوین برنامه بازسازی و بازتوانی شهر تهران", k:"سازمان پیشگیری تهران", ec:"سایر", et:"غیر وابسته", n:"1332656-190", d:"1401/12/9", m:18, ext:"1404/09/30", v:22500, outRial:6720, outPhys:10125, prog:1, sent:1, tech:0.9, fin:0.7777777778, remain:5000, sentValue:22500, techValue:22500, finValue:17500, cost:22916.597245, ratio:1.3095198426, contractors:[]},
+
+  // ===== مخاطرات زمین‌شناختی =====
+  {g:"مخاطرات زمین‌شناختی", r:9, t:"انجام خدمات پژوهشی، تحقیقاتی برای شناسایی، اولویت‌بندی و نحوه اقدام در روستاهای در معرض خطر سوانح طبیعی (فاز 2)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"10510/ص", d:"1401/12/24", m:5, ext:"1405/06/31", v:43527, outRial:1000, outPhys:2176.35, prog:1, sent:1, tech:0.9, fin:0.8746755, remain:5454.9995115, sentValue:43527, techValue:39174.3, finValue:38072.0004885, cost:31203.839819, ratio:0.8196007412, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:10, t:"مطالعات پایدارسازی روستای زرآباد (شهرستان قزوین) در برابر خطر زمین‌لغزش", k:"بنیاد قزوین", ec:"بنیاد استانها", et:"وابسته", n:"36/ص-9469", d:"1401/12/28", m:6, ext:"1405/12/29", v:6978, outRial:3660, outPhys:6978, prog:1, sent:1, tech:1, fin:0.46, remain:3768.12, sentValue:6978, techValue:6978, finValue:3209.88, cost:4397.304222, ratio:1.3699279169, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:11, t:"مطالعات پایدارسازی روستای اوانک (شهرستان قزوین) در برابر خطر زمین‌لغزش", k:"بنیاد قزوین", ec:"بنیاد استانها", et:"وابسته", n:"36/ص-9467", d:"1401/12/28", m:6, ext:"1405/12/29", v:5951.6, outRial:2908, outPhys:5951.6, prog:1, sent:1, tech:1, fin:0.54, remain:2737.736, sentValue:5951.6, techValue:5951.6, finValue:3213.864, cost:2498.545751, ratio:0.7774273432, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:12, t:"مطالعات پایدارسازی روستای سفیدآب (شهرستان قزوین) در برابر خطر زمین‌لغزش", k:"بنیاد قزوین", ec:"بنیاد استانها", et:"وابسته", n:"36/ص-9468", d:"1401/12/28", m:6, ext:"1405/12/29", v:5795, outRial:2070, outPhys:5795, prog:1, sent:1, tech:1, fin:0.46, remain:3129.3, sentValue:5795, techValue:5795, finValue:2665.7, cost:2821.565581, ratio:1.02, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:13, t:"مطالعات زمین‌شناسی، ژئوتکنیک و هیدرولوژی روستای مج (شهرستان طرقبه و شاندیز)", k:"بنیاد خراسان رضوی", ec:"بنیاد استانها", et:"وابسته", n:"18/75992", d:"1403/06/13", m:8, ext:"1405/12/25", v:12203.701507, outRial:1750, outPhys:4881.4806028, prog:1, sent:1, tech:1, fin:0.8999366, remain:1221.1438653755, sentValue:12203.701507, techValue:12203.701507, finValue:10982.5576416245, cost:3677.115529, ratio:0.3348141343, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:14, t:"مطالعات پایدارسازی روستای شهنیز (شهرستان مارگون) در برابر خطر زمین لغزش", k:"بنیاد کهگیلویه و بویراحمد", ec:"بنیاد استانها", et:"وابسته", n:"27/6497", d:"1403/06/24", m:12, ext:"-", v:8000, outRial:3216, outPhys:3200, prog:1, sent:1, tech:0.4, fin:0.8, remain:1600, sentValue:8000, techValue:3200, finValue:6400, cost:5037.825996, ratio:0.7871603119, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:15, t:"مطالعات ایمن‌سازی روستای بستانه در برابر خطر سیلاب (شهرستان بندر لنگه)", k:"بنیاد هرمزگان", ec:"بنیاد استانها", et:"وابسته", n:"ص/3-11201/04/32", d:"1404/06/12", m:6, ext:"1404/12/12", v:5560.4, outRial:800, outPhys:5560.4, prog:0.4, sent:0, tech:0, fin:0.461477592, remain:2994.3999974432, sentValue:0, techValue:0, finValue:2566.0000025568, cost:55.453215, ratio:0.0216107619, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:16, t:"مطالعات ایمن‌سازی در برابر خطر سیلاب روستاهای چاله شهرستان البرز، روح‌آباد شهرستان قزوین، دستجرد شهرستان تاکستان و شهیدآباد شهرستان آوج", k:"بنیاد قزوین", ec:"بنیاد استانها", et:"وابسته", n:"41849", d:"1404/08/17", m:6, ext:"1405/12/29", v:10000, outRial:3000, outPhys:10000, prog:1, sent:1, tech:0, fin:0, remain:10000, sentValue:10000, techValue:0, finValue:0, cost:488.182262, ratio:null, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:17, t:"ایمن‌سازی محدوده شرقی سراب روانسر شهرستان روانسر در برابر خطر سنگ افتان", k:"بنیاد کرمانشاه", ec:"بنیاد استانها", et:"وابسته", n:"25/22020", d:"1404/10/14", m:3, ext:"1405/06/31", v:2093.114745, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:2093.114745, techValue:2093.114745, finValue:2093.114745, cost:600.852041, ratio:0.287061205, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:18, t:"تهیه گزارش اولیه از روستاهای آسیب‌دیده از مخاطرات طبیعی (گوهر گیلانکشه با کلور سیاهورود، خلج، امیرلو و پالتلو)", k:"بنیاد زنجان", ec:"بنیاد استانها", et:"وابسته", n:"27523", d:"1405/02/06", m:1, ext:"", v:3232.62, outRial:0.000001, outPhys:0, prog:1, sent:1, tech:0, fin:0, remain:3232.62, sentValue:3232.62, techValue:0, finValue:0, cost:182.926303, ratio:null, contractors:[]},
+  {g:"مخاطرات زمین‌شناختی", r:19, t:"مطالعات کنترل سیلاب و پایدارسازی سنگ افتان روستای چرم کهنه", k:"بنیاد خراسان رضوی", ec:"بنیاد استانها", et:"وابسته", n:"18/30610", d:"1405/03/16", m:6, ext:"-", v:11000, outRial:0.000002, outPhys:0, prog:0.5, sent:0, tech:0, fin:0, remain:11000, sentValue:0, techValue:0, finValue:0, cost:0, ratio:null, contractors:[]},
+
+  // ===== مخاطرات هیدرولوژیکی =====
+  {g:"مخاطرات هیدرولوژیکی", r:20, t:"پژوهش و تحقیقات ارائه کد ارتفاعی ساخت و ساز برای روستاهای در معرض خطر سیلاب (200 روستا)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"10384/ص", d:"1401/12/21", m:12, ext:"1405/04/31", v:50000, outRial:6272.75, outPhys:15000, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:50000, techValue:50000, finValue:50000, cost:24916.958092, ratio:0.4983391618, contractors:[]},
+  {g:"مخاطرات هیدرولوژیکی", r:21, t:"ایمن‌سازی در برابر خطر سیلاب روستای چم بطان علیا و سفلی کرمانشاه", k:"بنیاد مسکن کرمانشاه", ec:"بنیاد استانها", et:"وابسته", n:"26/7704", d:"1403/04/12", m:2, ext:"-", v:4551, outRial:800, outPhys:4551, prog:1, sent:1, tech:0, fin:1, remain:0, sentValue:4551, techValue:0, finValue:4551, cost:2061.5607, ratio:0.4529907053, contractors:[]},
+
+  // ===== مدیریت بحران =====
+  {g:"مدیریت بحران", r:22, t:"نظارت بر تدوین برنامه استانی کاهش خطر حوادث و سوانح و برنامه استانی آمادگی و پاسخ استان سیستان و بلوچستان", k:"استانداری سیستان و بلوچستان", ec:"سایر", et:"غیر وابسته", n:"1401.505", d:"1401/02/04", m:5, ext:"-", v:2000, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0.75, remain:500, sentValue:2000, techValue:2000, finValue:1500, cost:1018.647853, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:23, t:"نظارت بر تهیه و تدوین برنامه‌های کاهش خطر و سوانح استان آذربایجان شرقی", k:"استانداری آذربایجان شرقی", ec:"سایر", et:"غیر وابسته", n:"فاکتوری", d:"-", m:"-", ext:"-", v:700, outRial:0, outPhys:0, prog:0.8, sent:0.8, tech:0.5, fin:0.5, remain:350, sentValue:560, techValue:350, finValue:350, cost:0, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:24, t:"نظارت بر تهیه و تدوین برنامه‌های کاهش خطر و سوانح و آمادگی و پاسخ استان یزد", k:"استانداری یزد", ec:"سایر", et:"غیر وابسته", n:"275612", d:"1402/12/20", m:"-", ext:"-", v:750, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0, remain:750, sentValue:750, techValue:750, finValue:0, cost:0, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:25, t:"نظارت بر تدوین برنامه استانی کاهش خطر حوادث و سوانح و برنامه استانی آمادگی و پاسخ استان بوشهر", k:"استانداری بوشهر", ec:"سایر", et:"غیر وابسته", n:"26/44/38292", d:"1403/07/30", m:6, ext:"-", v:1000, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0.9, remain:100, sentValue:1000, techValue:1000, finValue:900, cost:0, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:26, t:"نظارت بر تدوین برنامه استانی کاهش خطر حوادث و سوانح و برنامه استانی آمادگی و پاسخ استان گلستان", k:"استانداری گلستان", ec:"سایر", et:"غیر وابسته", n:"1401/108", d:"1401/06/14", m:6, ext:"-", v:700, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0.7456, remain:178.08, sentValue:700, techValue:700, finValue:521.92, cost:0, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:27, t:"نظارت بر تدوین برنامه استانی کاهش خطر حوادث و سوانح و برنامه استانی آمادگی و پاسخ استان خوزستان", k:"استانداری خوزستان", ec:"سایر", et:"غیر وابسته", n:"44/4/44546", d:"1403/12/25", m:3, ext:"-", v:1110, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0.8, remain:222, sentValue:1110, techValue:1110, finValue:888, cost:0, ratio:null, contractors:[]},
+  {g:"مدیریت بحران", r:28, t:"تهیه اطلس مخاطرات طبیعی استان آذربایجان غربی", k:"استانداری آذربایجان غربی", ec:"سایر", et:"غیر وابسته", n:"فاکتوری-14/1403/79/047", d:"1403/12/19", m:6, ext:"-", v:1460, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:1460, techValue:1460, finValue:1460, cost:0, ratio:null, contractors:[]},
+
+  // ===== تاب آوری =====
+  {g:"تاب آوری", r:29, t:"تدوین برنامه کاهش خطر حوادث و سوانح کلانشهر تهران", k:"سازمان پیشگیری تهران", ec:"سایر", et:"غیر وابسته", n:"1332628-190", d:"1401/12/9", m:18, ext:"1404/09/30", v:31500, outRial:32700, outPhys:23940, prog:1, sent:1, tech:0.72, fin:0.6, remain:12600, sentValue:31500, techValue:22680, finValue:18900, cost:30755.187643, ratio:1.6272586054, contractors:[]},
+  {g:"تاب آوری", r:30, t:"تدوین برنامه آمادگی و پاسخ کلانشهر تهران", k:"سازمان پیشگیری تهران", ec:"سایر", et:"غیر وابسته", n:"1332641-190", d:"1401/12/9", m:18, ext:"1404/09/30", v:18750, outRial:26000, outPhys:16875, prog:1, sent:1, tech:0.6, fin:0.523488, remain:8934.6, sentValue:18750, techValue:11250, finValue:9815.4, cost:20899.759124, ratio:2.1292824667, contractors:[]},
+
+  // ===== بافت ناکارآمد =====
+  {g:"بافت ناکارآمد", r:31, t:"انجام خدمات مشاوره پژوهشی ساماندهی سکونتگاه‌های شرق شهر چابهار از طریق دفتر محلی در چابهار", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"8345/ص", d:"1402/12/12", m:24, ext:"1405/05/31", v:170336, outRial:0, outPhys:0, prog:1, sent:1, tech:0.6621911986, fin:0.6621911986, remain:57541, sentValue:170336, techValue:112795, finValue:112795, cost:81558.025902, ratio:0.7230641952, contractors:[]},
+  {g:"بافت ناکارآمد", r:32, t:"انجام خدمات مشاوره پژوهشی تهیه طرح تفصیلی ساماندهی بافت ناکارآمد سکونتگاه‌های شرق شهر چابهار", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"8344/ص", d:"1402/12/12", m:6, ext:"1405/08/30", v:29388, outRial:0, outPhys:0, prog:0.85, sent:0.85, tech:0.85, fin:0.85, remain:4408.2, sentValue:24979.8, techValue:24979.8, finValue:24979.8, cost:22431.544172, ratio:0.8979873407, contractors:[]},
+  {g:"بافت ناکارآمد", r:33, t:"طرح تفکیک و آماده‌سازی سایت 53 هکتاری روستای آق قایه استان گلستان", k:"راه و شهرسازی گلستان", ec:"سایر", et:"غیر وابسته", n:"4820", d:"1404/02/17", m:4, ext:"1405/12/29", v:13320, outRial:3000, outPhys:6926.4, prog:1, sent:1, tech:0.95, fin:0.3, remain:9324, sentValue:13320, techValue:0, finValue:3996, cost:5156.816948, ratio:1.2904947317, contractors:[]},
+  {g:"بافت ناکارآمد", r:34, t:"تهیه طرح ساماندهی بافت ناکارآمد حاشیه شهر سروان در استان سیستان و بلوچستان", k:"بنیاد سیستان و بلوچستان", ec:"بنیاد استانها", et:"وابسته", n:"16172", d:"1404/06/24", m:18, ext:"-", v:184000, outRial:85417.4, outPhys:0, prog:0.35, sent:0.3, tech:0.27, fin:0.2672843905, remain:134819.672149, sentValue:55200, techValue:49680, finValue:49180.327851, cost:58274.325944, ratio:1.1849112946, contractors:[]},
+  {g:"بافت ناکارآمد", r:35, t:"ارائه خدمات تحقیقاتی مشاوره‌ای و پژوهشی در تدوین نظام جامع آموزش و توانمندسازی منابع انسانی در بنیاد مسکن انقلاب اسلامی", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"1795", d:"1405/04/06", m:8, ext:"-", v:20400, outRial:0, outPhys:0, prog:0.2, sent:0, tech:0, fin:0, remain:20400, sentValue:0, techValue:0, finValue:0, cost:0, ratio:null, contractors:[]},
+  {g:"بافت ناکارآمد", r:36, t:"انجام خدمات مشاوره پژوهشی سطح‌بندی و اولویت‌بندی مداخله در بافت‌های ناکارآمد کرمانشاه", k:"بنیاد کرمانشاه", ec:"بنیاد استانها", et:"وابسته", n:"26/3019", d:"1405/02/22", m:4, ext:"", v:9836.065583, outRial:0, outPhys:0, prog:0.2, sent:0, tech:0, fin:0, remain:null, sentValue:0, techValue:0, finValue:0, cost:0.000001, ratio:null, contractors:[]},
+  {g:"بافت ناکارآمد", r:37, t:"انجام مطالعات سیویل معابر، شبکه جمع‌آوری آب‌های سطحی و طرح تفکیک سایت 16 هکتاری میدان تیر گرگان استان گلستان", k:"راه و شهرسازی گلستان", ec:"سایر", et:"غیر وابسته", n:"14237", d:"1405/04/27", m:3, ext:"", v:12180, outRial:1508, outPhys:0, prog:0.3, sent:0.1, tech:0, fin:0, remain:null, sentValue:1218, techValue:0, finValue:0, cost:0.000002, ratio:null, contractors:[]},
+  {g:"بافت ناکارآمد", r:38, t:"مطالعات طرح توسعه شهر صنعتی و منطقه ویژه اقتصادی کاوه", k:"شرکت شهر صنعتی کاوه", ec:"سایر", et:"غیر وابسته", n:"3111/15109", d:"1404/09/05", m:8, ext:"-", v:4720, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0, remain:null, sentValue:4720, techValue:4720, finValue:0, cost:0.000003, ratio:null, contractors:[]},
+
+  // ===== توسعه روستایی =====
+  {g:"توسعه روستایی", r:39, t:"سند مطالعاتی طرح آبادانی و پیشرفت منظومه روستایی در دو بخش مرکزی و یونسی شهرستان بجستان استان خراسان رضوی", k:"بنیاد خراسان رضوی", ec:"بنیاد استانها", et:"وابسته", n:"18.11633", d:"1402/09/19", m:12, ext:"1405/04/30", v:7500, outRial:1750, outPhys:7500, prog:1, sent:1, tech:0.4, fin:0.4, remain:4500, sentValue:7500, techValue:3000, finValue:3000, cost:7029.143696, ratio:null, contractors:[]},
+  {g:"توسعه روستایی", r:40, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان بروجن استان چهارمحال بختیاری", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"4512/ص", d:"1403/08/02", m:12, ext:"1405/02/31", v:46112.885995, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:46112.885995, techValue:46112.885995, finValue:46112.885995, cost:8701.131309, ratio:0.1886919702, contractors:[]},
+  {g:"توسعه روستایی", r:41, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان گچساران استان کهگیلویه و بویراحمد", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"4513/ص", d:"1403/08/02", m:12, ext:"1405/05/31", v:53697.15577, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:53697.15577, techValue:53697.15577, finValue:53697.15577, cost:29818.881085, ratio:0.5553158386, contractors:[]},
+  {g:"توسعه روستایی", r:42, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان خداآفرین (بخش مرکزی و گرمادوز) استان آذربایجان شرقی", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"7722/ص", d:"1403/12/28", m:12, ext:"1405/06/31", v:90735.881475, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:90735.881475, techValue:90735.881475, finValue:90735.881475, cost:24032.389074, ratio:0.2648609203, contractors:[]},
+  {g:"توسعه روستایی", r:43, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان گناوه استان بوشهر (2)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"914/ص", d:"1404/03/03", m:12, ext:"1405/08/30", v:100423.073835, outRial:2800, outPhys:35148.07584225, prog:0.85, sent:0.85, tech:0.85, fin:0.85, remain:15063.46107525, sentValue:85359.61275975, techValue:85359.61275975, finValue:85359.61275975, cost:23232.75607, ratio:0.2721750406, contractors:[]},
+  {g:"توسعه روستایی", r:44, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان فامنین (پیشخور)، ملایر (جوکار) و بهار (لالجین)", k:"بنیاد مسکن همدان", ec:"بنیاد استانها", et:"وابسته", n:"04/33/3087", d:"1404/02/28", m:12, ext:"1405/12/29", v:21000, outRial:1500, outPhys:8400, prog:0.85, sent:0.85, tech:0.4188466042, fin:0.4188466042, remain:12204.221312, sentValue:17850, techValue:8795.778688, finValue:8795.778688, cost:12389.933505, ratio:1.4086226978, contractors:[]},
+  {g:"توسعه روستایی", r:45, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان چابهار استان سیستان و بلوچستان (2)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"1870/ص", d:"1404/05/05", m:12, ext:"-", v:184096.14767, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:184096.14767, techValue:184096.14767, finValue:184096.14767, cost:41891.003161, ratio:0.2275495913, contractors:[]},
+  {g:"توسعه روستایی", r:46, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان‌های روانسر و ثلاث باباجانی استان کرمانشاه", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"2017/ص", d:"1404/05/12", m:12, ext:"-", v:38933, outRial:20000, outPhys:38933, prog:0.4, sent:0.4, tech:0.32, fin:0.32, remain:26474.44, sentValue:15573.2, techValue:12458.56, finValue:12458.56, cost:8462.049625, ratio:0.6792157059, contractors:[]},
+  {g:"توسعه روستایی", r:47, t:"طرح آبادانی و پیشرفت منظومه روستایی بخش مرکزی شهرستان سروآباد، بخش آرمرده شهرستان بانه و بخش کرانی شهرستان بیجار", k:"بنیاد مسکن کردستان", ec:"بنیاد استانها", et:"وابسته", n:"11958/21/1", d:"1404/06/01", m:12, ext:"1405/10/30", v:24590.163935, outRial:12000, outPhys:19672.131148, prog:0.4, sent:0.4, tech:0.93, fin:0.93, remain:1721.31147545, sentValue:9836.065574, techValue:22868.85245955, finValue:22868.85245955, cost:6622.48125, ratio:0.2895852016, contractors:[]},
+  {g:"توسعه روستایی", r:48, t:"توافق‌نامه اجرای برنامه تأمین مالی خرد", k:"وزارت تعاون کار و رفاه اجتماعی", ec:"سایر", et:"وابسته", n:"169533", d:"1404/09/15", m:36, ext:"-", v:39600, outRial:0, outPhys:0, prog:0.2, sent:0, tech:0, fin:0, remain:39600, sentValue:0, techValue:0, finValue:0, cost:2961.003646, ratio:null, contractors:[]},
+  {g:"توسعه روستایی", r:49, t:"طرح آبادانی و پیشرفت منظومه روستایی شهرستان زیرکوه بخش زهان استان خراسان جنوبی (2)", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"778", d:"1405/02/28", m:12, ext:"-", v:79431.521797, outRial:7700, outPhys:0, prog:0.15, sent:0, tech:0, fin:0, remain:79431.521797, sentValue:0, techValue:0, finValue:0, cost:961.9475, ratio:null, contractors:[]},
+  {g:"توسعه روستایی", r:50, t:"اجرای طرح آبادانی و پیشرفت منظومه روستایی شهرستان چابهار استان سیستان و بلوچستان", k:"بنیاد سیستان و بلوچستان", ec:"بنیاد استانها", et:"وابسته", n:"/٠٥/١١١٨٥/١٧٧٣١٧ص", d:"1405/06/14", m:12, ext:"-", v:125000, outRial:0, outPhys:0, prog:0, sent:0, tech:0, fin:0, remain:null, sentValue:0, techValue:0, finValue:0, cost:0, ratio:null, contractors:[]},
+  {g:"توسعه روستایی", r:51, t:"مطالعه طرح آبادانی و پیشرفت منظومه روستایی بخش مرکزی شهرستان قروه", k:"بنیاد کردستان", ec:"بنیاد استانها", et:"وابسته", n:"4830", d:"1405/06/15", m:7, ext:"", v:9836.065574, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0, remain:null, sentValue:9836.065574, techValue:9836.065574, finValue:0, cost:0, ratio:null, contractors:[]},
+
+  // ===== دفتر فنی =====
+  {g:"دفتر فنی", r:52, t:"ارائه خدمات مطالعاتی و مشاوره‌ای سیویل معابر و شبکه آب‌های سطحی سکونتگاه‌های ناکارآمد و در معرض خطر شرق شهر چابهار", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"2499/ص", d:"1403/05/14", m:12, ext:"1405/06/31", v:80812.5, outRial:20573.595, outPhys:72731.25, prog:0.9, sent:0.9, tech:0.9, fin:0.9, remain:8081.25, sentValue:72731.25, techValue:72731.25, finValue:72731.25, cost:18343.536912, ratio:0.2522098398, contractors:[]},
+  {g:"دفتر فنی", r:53, t:"ایمن‌سازی در برابر خطر سیلاب روستای طرود و آتشان شهرستان فیروزکوه", k:"بنیاد تهران", ec:"بنیاد استانها", et:"وابسته", n:"3908", d:"1403/06/20", m:7, ext:"1405/12/01", v:7001.844, outRial:1350, outPhys:4201.1064, prog:1, sent:1, tech:0.8695652174, fin:0.8695652174, remain:913.284, sentValue:7001.844, techValue:6088.56, finValue:6088.56, cost:2206.305315, ratio:0.3623689863, contractors:[]},
+  {g:"دفتر فنی", r:54, t:"خدمات مشاوره انجام مطالعات و طراحی مجموعه مسکونی ارغوان مشهد", k:"بنیاد خراسان رضوی", ec:"بنیاد استانها", et:"وابسته", n:"18/9837", d:"1403/02/01", m:6, ext:"1405/04/30", v:40005.213023, outRial:18030, outPhys:40005.213023, prog:0.85, sent:1, tech:0.85, fin:0.85, remain:6000.78195345, sentValue:40005.213023, techValue:34004.43106955, finValue:34004.43106955, cost:17518.007347, ratio:0.5151683706, contractors:[]},
+  {g:"دفتر فنی", r:55, t:"مطالعات سیویل معابر و جمع‌آوری آب‌های سطحی روستای سله‌بن فیروزکوه", k:"بنیاد تهران", ec:"بنیاد استانها", et:"وابسته", n:"16/146/6315", d:"1404/10/21", m:6, ext:"-", v:17390, outRial:5564.8, outPhys:12173, prog:0.88, sent:0.88, tech:0.88, fin:0, remain:17390, sentValue:15303.2, techValue:15303.2, finValue:0, cost:3258.10142, ratio:null, contractors:[]},
+  {g:"دفتر فنی", r:56, t:"مطالعات طراحی پل روستای قره‌خانبیگلو از توابع شهرستان استان انگوت اردبیل", k:"بنیاد اردبیل", ec:"بنیاد استانها", et:"وابسته", n:"7145", d:"1405/04/01", m:6, ext:"-", v:8500, outRial:0, outPhys:0, prog:1, sent:1, tech:1, fin:0, remain:null, sentValue:8500, techValue:8500, finValue:0, cost:0, ratio:null, contractors:[]},
+
+  // ===== معاونت آموزش =====
+  {g:"معاونت آموزش", r:57, t:"خدمات مشاوره مدیریت در زمینه نظرسنجی از ذی‌نفعان", k:"شرکت خانه گستر یکم", ec:"شرکتها", et:"وابسته", n:"1515", d:"1404/08/24", m:3, ext:"1405/03/31", v:4200, outRial:2800, outPhys:4200, prog:1, sent:1, tech:0.7142857143, fin:0.7142857143, remain:1200, sentValue:4200, techValue:3000, finValue:3000, cost:1960, ratio:0.6533333333, contractors:[]},
+  {g:"معاونت آموزش", r:58, t:"ارائه خدمات مشاوره و توانمندسازی سازمانی در حوزه نظام مدیریت کیفیت راهبرد آموزش و ارزیابی عملکرد کارکنان و سنجش استنباطات ذی‌نفعان کلیدی", k:"شرکت آزادراه اهواز-بندرامام", ec:"شرکتها", et:"وابسته", n:"2311", d:"1404/08/24", m:9, ext:"-", v:13000, outRial:9100, outPhys:13000, prog:1, sent:1, tech:1, fin:1, remain:0, sentValue:13000, techValue:13000, finValue:13000, cost:10920, ratio:0.84, contractors:[]},
+  {g:"معاونت آموزش", r:59, t:"ارائه خدمات تحقیقاتی مشاوره‌ای و پژوهشی در تدوین وظایف واحدهای سازمانی و الزامات شغلی بنیاد مسکن انقلاب اسلامی", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"1796", d:"1405/04/06", m:5, ext:"-", v:10906.25, outRial:0, outPhys:0, prog:0.05, sent:0, tech:0, fin:0, remain:10906.25, sentValue:0, techValue:0, finValue:0, cost:0, ratio:null, contractors:[]},
+
+  // ===== بنیاد تک =====
+  {g:"بنیاد تک", r:60, t:"ارزیابی و بهینه‌سازی الگوی ساخت پیچ و مهره‌ای مصوب بنیاد مسکن انقلاب اسلامی", k:"دفتر مرکزی", ec:"دفترمرکزی", et:"وابسته", n:"2908/ص", d:"1404/06/22", m:18, ext:"-", v:26500, outRial:0, outPhys:0, prog:0.35, sent:0.2, tech:0.2, fin:0.2, remain:21200, sentValue:5300, techValue:5300, finValue:5300, cost:6809.678573, ratio:1.2848450138, contractors:[]},
+  {g:"بنیاد تک", r:61, t:"انجام خدمات مدل‌سازی اطلاعات ساختمان (BIM) پروژه مجتمع مسکونی مشتاق", k:"بنیاد اصفهان", ec:"بنیاد استانها", et:"وابسته", n:"41089/79287", d:"1404/09/17", m:3, ext:"-", v:1295, outRial:0, outPhys:0, prog:0.7, sent:0.63, tech:0, fin:0, remain:1295, sentValue:815.85, techValue:0, finValue:0, cost:671.34147, ratio:null, contractors:[]},
+  {g:"بنیاد تک", r:62, t:"انجام خدمات طراحی خط، مدیریت و نظارت بر اجرای سیستم پالتایزینگ کارخانه آذر عمران غرب", k:"شرکت بنیاد بتن آذر عمران غرب", ec:"شرکتها", et:"وابسته", n:"15802/د/03", d:"1403/11/24", m:8, ext:"1405/06/31", v:8400, outRial:0, outPhys:0, prog:0.6, sent:0.5, tech:0.5, fin:0.31, remain:5796, sentValue:4200, techValue:4200, finValue:2604, cost:4233.43345, ratio:1.6257424923, contractors:[]},
+];
+
+const MONTHS = ["شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+
+const MONTHLY_FORECAST_BY_GROUP = {
+  "مقاوم سازی": { cost:[5473.42, 10836.447514, 5237.2893244, 5237.2893244, 5237.2893244, 5237.2893244, 5237.2893244], income:[14611.5446622, 5437.5, 1963.98349665, 0, 2618.6446622, 0, 2618.6446622] },
+  "بازسازی": { cost:[0,0,0,0,0,0,0], income:[4548.8895559, 5329.8097239, 0, 0, 0, 0, 0] },
+  "مخاطرات زمین‌شناختی": { cost:[200, 480, 0, 0, 600, 0, 0], income:[3232.62, 19035.156, 13226.1433768755, 0, 9644.3999974432, 0, 0] },
+  "مخاطرات هیدرولوژیکی": { cost:[0,0,0,0,0,0,0], income:[0,0,0,0,0,0,0] },
+  "مدیریت بحران": { cost:[0,0,0,0,0,0,0], income:[2100.08, 0, 0, 0, 0, 0, 0] },
+  "تاب آوری": { cost:[0,0,0,0,0,0,0], income:[0, 21534.6, 0, 0, 0, 0, 0] },
+  "بافت ناکارآمد": { cost:[1700, 2000, 2000, 0, 0, 0, 3000], income:[26869.665583, 40507.4, 5100, 67982.2, 0, 0, 69950] },
+  "توسعه روستایی": { cost:[11800, 0, 11000, 0, 0, 0, 3000], income:[0, 48188.26515555, 32351.31147545, 44498.0393448, 0, 62500, 23829.4565391] },
+  "دفتر فنی": { cost:[21810.358142, 10500, 0, 0, 0, 0, 0], income:[34634.25595345, 12173, 0, 0, 0, 0, 0] },
+  "معاونت آموزش": { cost:[0, 853.9999999999993, 1806, 0, 0, 0, 0], income:[569.9999999999999, 630, 0, 0, 10906.25, 0, 0] },
+  "بنیاد تک": { cost:[0,0,0,0,0,0,0], income:[0,0,0,0,0,0, 28291] }
+};
+
+const MONTHLY_ACTUAL_BY_GROUP = {};
+FIXED_GROUPS.forEach(g=>{
+  MONTHLY_ACTUAL_BY_GROUP[g] = { cost:new Array(MONTHS.length).fill(0), income:new Array(MONTHS.length).fill(0) };
+});
+
+function sumAllForecast(){
+  const all = { cost:[], income:[] };
+  for(let i=0; i<MONTHS.length; i++){
+    all.cost[i]=0; all.income[i]=0;
+    Object.values(MONTHLY_FORECAST_BY_GROUP).forEach(m=>{ all.cost[i]+=m.cost[i]||0; all.income[i]+=m.income[i]||0; });
+  }
+  return all;
+}
+function sumAllActual(){
+  const all = { cost:[], income:[] };
+  for(let i=0; i<MONTHS.length; i++){
+    all.cost[i]=0; all.income[i]=0;
+    Object.values(MONTHLY_ACTUAL_BY_GROUP).forEach(m=>{ all.cost[i]+=m.cost[i]||0; all.income[i]+=m.income[i]||0; });
+  }
+  return all;
+}
+const MONTHLY_ALL_FORECAST = sumAllForecast();
+const MONTHLY_ALL_ACTUAL = sumAllActual();
+
+const INTERNAL = [
+  {g:"مقاوم سازی", r:1, t:"راهکارهای سریع تقویت سازه‌های آسیب‌دیده از انفجار (با تمرکز بر پایداری اضطراری و بهره‌برداری موقت)", executor:"حاج حیدری", expected:1, actual:0.4},
+  {g:"مقاوم سازی", r:2, t:"دستنامه ترمیم ساختمان‌های بنایی (کلاف‌ها، سقف و دیوار) آسیب‌دیده از زلزله با آخرین ویرایش‌های مبحث هشتم و استاندارد 2800", executor:"حاج حیدری", expected:0.2857142857142857, actual:0},
+  {g:"بازسازی", r:3, t:"مستندسازی و ارزیابی بازسازی پس از جنگ ۱۲روزه", executor:"پیرباوقار، امیدیان", expected:0.6, actual:0.1},
+  {g:"بازسازی", r:4, t:"تدوین کتاب درس‌آموخته‌های زلزله ۱۳۷۶ اردکول", executor:"هاشمی، عمارلو", expected:0.75, actual:0.8},
+  {g:"بازسازی", r:5, t:"ساختار و نظام تشکیلاتی مدیریت بحران با تاکید بر بازیابی", executor:"هاشمی", expected:1, actual:0.9},
+  {g:"بازسازی", r:6, t:"بررسی میزان خسارت، مصوبات و ... جنگ رمضان", executor:"باوقار، ابراهیم‌نیا", expected:1, actual:0.5},
+  {g:"بازسازی", r:7, t:"تاریخ شفاهی بنیاد مسکن انقلاب اسلامی", executor:"هاشمی، باوقار، عمارلو", expected:0.3, actual:0},
+  {g:"بازسازی", r:8, t:"تهیه بولتن ماهانه حوادث و سوانح", executor:"باوقار، عیوضی", expected:0.25, actual:0.16666666666666666},
+  {g:"بازسازی", r:9, t:"تهیه و تدوین گزارش حوادث و سوانح سال ۱۴۰۴", executor:"باوقار، امیدیان، عیوضی", expected:1, actual:0.9},
+  {g:"مخاطرات زمین‌شناختی", r:10, t:"آسیب‌شناسی طرح‌های ایمن‌سازی روستاهای در معرض خطر سنگ افتان", executor:"اسگندرپور، حیدریان، صبوری، صداقت", expected:0.3333333333333333, actual:0.1},
+  {g:"مخاطرات زمین‌شناختی", r:11, t:"آسیب‌شناسی طرح‌های پایدارسازی زمین لغزش‌های ناشی از سیلاب ۱۳۹۸ کشور", executor:"صبوری، اسگندرپور، حیدریان، محمدصالحی", expected:0.3333333333333333, actual:0.1},
+  {g:"مخاطرات هیدرولوژیکی", r:12, t:"طرح اعتبار مالیاتی توسعه سامانه پشتیبان تصمیم‌گیری مکانی مبتنی بر هوش مصنوعی در مدیریت ریسک سکونتگاه‌های درمعرض خطر", executor:"فلاحتی، اشکریز، خلج، مشاور", expected:0.6, actual:0.9},
+  {g:"مخاطرات هیدرولوژیکی", r:13, t:"مجموعه جستارهای تغییر اقلیم: از دانش تا حکمرانی و سیاست‌گذاری", executor:"فلاحتی، اشکریز، خلج", expected:0.75, actual:0.2},
+  {g:"مخاطرات هیدرولوژیکی", r:14, t:"تدوین شیوه‌نامه ارزیابی تنش آبی و تاب‌آوری منابع آب با بهره‌گیری از اسناد جهانی و داده‌های موجود", executor:"فلاحتی، همکاران گروه", expected:0.42857142857142855, actual:0.05},
+  {g:"مخاطرات هیدرولوژیکی", r:15, t:"مطالعه تطبیقی استانداردهای جهانی هشدار سریع سیلاب و تدوین دستورالعمل بومی", executor:"فلاحتی، همکاران گروه", expected:0.3, actual:0},
+  {g:"مدیریت بحران", r:16, t:"تهیه و تدوین برنامه عملیات شرایط اضطراری (EOP) وزارت عتف", executor:"صدقی، زندیه، مفضلی، امیدیان", expected:1, actual:0.95},
+  {g:"مدیریت بحران", r:17, t:"شناسایی چالش‌های مدیریت بحران شهر تهران در صورت وقوع زلزله احتمالی", executor:"زندیه، صدقی", expected:0.6, actual:0.1},
+  {g:"مدیریت بحران", r:18, t:"تخلیه اضطراری در حوادث و سوانح (ساختمان‌های بلند، بیمارستان‌ها، اماکن تجاری و اماکن مذهبی)", executor:"مفضلی، صدقی", expected:1, actual:0.95},
+  {g:"مدیریت بحران", r:19, t:"بررسی تطبیقی محتوا، برنامه درسی و ارزشیابی درس (دانشگاهی) آمادگی در برابر حوادث و سوانح", executor:"صدقی، مفضلی", expected:0.3333333333333333, actual:0.05},
+  {g:"تاب آوری", r:20, t:"بررسی تطبیقی ساختارها و برنامه‌های مدیریت بحران در جهان", executor:"رستمی، صدقی", expected:1, actual:0.3},
+  {g:"تاب آوری", r:21, t:"شناسایی ضعف‌های ساختاری و کارکردی و تدوین الگوی اصلاح نهادی مدیریت بحران با رویکرد تقویت تاب‌آوری نهادی", executor:"رستمی", expected:0.3, actual:0.05},
+  {g:"بافت ناکارآمد", r:22, t:"تحلیل فضایی خدمات حیاتی و فضاهای حساس شهری با هدف کاهش آسیب‌پذیری در شرایط بحرانی و جنگی", executor:"همکاران گروه", expected:0.6, actual:0.2},
+  {g:"بافت ناکارآمد", r:23, t:"تحلیل نهادی تعامل حقوق مالکیت زمین با سیاست‌های مسکن حمایتی", executor:"همکاران گروه", expected:0.2857142857142857, actual:0},
+  {g:"بافت ناکارآمد", r:24, t:"فاز دوم طرح اعتبار مالیاتی سامانه سکونتگاه‌های در معرض خطر؛ بخش بافت‌های ناکارآمد", executor:"همکاران گروه", expected:0.2857142857142857, actual:0},
+  {g:"توسعه روستایی", r:25, t:"تحلیل نقش روستا–شهرها در نظام برنامه‌ریزی سکونتگاهی با تأکید بر کارکرد آن‌ها در دوران جنگ", executor:"همکاران گروه", expected:0.6, actual:0.05},
+  {g:"توسعه روستایی", r:26, t:"ارزیابی تأثیر مشاغل و تسهیلات خانگی بر پایداری اقتصاد روستایی در دوران جنگ", executor:"همکاران گروه", expected:0.2857142857142857, actual:0},
+  {g:"دفتر فنی", r:27, t:"شناسایی و بررسی تحولات فناوری‌های نوین و کاربردی در حوزه حوادث و سوانح", executor:"خطیبی", expected:0.5, actual:0.05},
+];
+
+function enNum(n, decimals){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  if(decimals !== undefined){
+    return Number(n).toLocaleString("en-US", {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
+  }
+  if(Math.abs(n) >= 100) return Number(n).toLocaleString("en-US", {maximumFractionDigits:0});
+  if(Math.abs(n) >= 1) return Number(n).toLocaleString("en-US", {maximumFractionDigits:2});
+  return Number(n).toLocaleString("en-US", {maximumFractionDigits:3});
+}
+function pctF(n){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  return (n*100).toFixed(1) + "%";
+}
+function pctF2(n){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  return (n*100).toFixed(2) + "%";
+}
+function slugify(s){
+  return s.replace(/\s+/g,'_').replace(/[^\u0600-\u06FF\w_]/g,'');
+}
+
+function ratioWithIcon(ratio){
+  if(ratio===null || ratio===undefined || isNaN(ratio)) return `<span class="ratio">—</span>`;
+  let cls = "good", icon = "";
+  if(ratio>1){ cls="bad"; icon = `<span class="ratio-icon" title="نسبت هزینه از ۱۰۰٪ گذشته — خطر جدی">⚠️</span>`; }
+  else if(ratio>0.7){ cls="warn"; icon = `<span class="ratio-icon" title="نسبت هزینه بالای ۷۰٪ — نیاز به بررسی">⚡</span>`; }
+  return `<span class="ratio-wrap"><span class="ratio ${cls} num">${pctF2(ratio)}</span>${icon}</span>`;
+}
+
+function extWarnIcon(extDate){
+  if(!extDate || extDate === "-" || extDate === "") return "";
+  const parts = String(extDate).split("/").map(s=>parseInt(s.replace(/[^\d]/g,'')));
+  if(parts.length < 3 || isNaN(parts[0])) return "";
+  const [y,m] = parts;
+  const nowY = 1405, nowM = 6;
+  const monthsDiff = (y - nowY)*12 + (m - nowM);
+  if(monthsDiff <= 0) return `<span class="ext-warn critical" title="تمدید گذشته یا همین ماه! ${extDate}">⏰</span>`;
+  if(monthsDiff <= 3) return `<span class="ext-warn" title="تمدید نزدیک است: ${extDate}">⏰</span>`;
+  return "";
+}
+
+const groups = {};
+FIXED_GROUPS.forEach(g=>{
+  groups[g] = {name:g, items:[], totalValue:0, totalCost:0, totalSent:0, totalTech:0, totalFin:0, totalOutRial:0, totalOutPhys:0, progSum:0, count:0, people:0};
+});
+RAW.forEach(p=>{
+  if(!groups[p.g]) return;
+  const G = groups[p.g];
+  G.items.push(p);
+  G.totalValue += p.v||0;
+  G.totalCost += p.cost||0;
+  G.totalSent += (p.sentValue||0);
+  G.totalTech += (p.techValue||0);
+  G.totalFin += (p.finValue||0);
+  G.totalOutRial += p.outRial||0;
+  G.totalOutPhys += p.outPhys||0;
+  G.progSum += p.prog||0;
+  G.count++;
+  G.people += (p.contractors?.length||0) + 1;
+});
+
+const totalValue = RAW.reduce((s,p)=>s+(p.v||0),0);
+const totalCost = RAW.reduce((s,p)=>s+(p.cost||0),0);
+const totalOutRial = RAW.reduce((s,p)=>s+(p.outRial||0),0);
+const totalOutPhys = RAW.reduce((s,p)=>s+(p.outPhys||0),0);
+
+document.getElementById("kpiCount").innerHTML = `${enNum(RAW.length,0)} <small>قرارداد</small>`;
+document.getElementById("kpiCountSub").textContent = `در ${enNum(FIXED_GROUPS.length,0)} گروه`;
+document.getElementById("kpiValue").innerHTML = `${enNum(totalValue, 0)} <small>م.ر</small>`;
+document.getElementById("kpiCost").innerHTML = `${enNum(totalCost, 0)} <small>م.ر</small>`;
+document.getElementById("kpiOutRial").innerHTML = `${enNum(totalOutRial, 0)} <small>م.ر</small>`;
+document.getElementById("kpiOutRialSub").textContent = `${pctF(totalOutRial/totalValue)} از ارزش کل`;
+document.getElementById("kpiOutPhys").innerHTML = `${enNum(totalOutPhys, 0)} <small>م.ر</small>`;
+document.getElementById("kpiOutPhysSub").textContent = `${pctF(totalOutPhys/totalValue)} از ارزش کل`;
+
+let gaugeState = { mode:"sent", group:"all", employer:"all" };
+const STAGE_INFO = {
+  sent: { label:"📤 مبلغ ارسال شده", color:"#38bdf8" },
+  tech: { label:"✅ مبلغ تایید فنی", color:"#22c55e" },
+  fin:  { label:"💼 مبلغ تایید مالی", color:"#a78bfa" },
+  cost: { label:"💰 هزینه ثبت‌شده", color:"#f97316" },
+};
+
+const gaugeGroupFilter = document.getElementById("gaugeGroupFilter");
+FIXED_GROUPS.forEach(g=>{
+  const opt = document.createElement("option");
+  opt.value = g; opt.textContent = g;
+  gaugeGroupFilter.appendChild(opt);
+});
+
+function getFilteredItemsForGauge(){
+  let items = RAW;
+  if(gaugeState.group !== "all") items = items.filter(p=>p.g === gaugeState.group);
+  if(gaugeState.employer !== "all") {
+    items = items.filter(p=>p.ec === gaugeState.employer || p.et === gaugeState.employer);
+  }
+  return items;
+}
+
+function computeGaugeData(items){
+  return {
+    value: items.reduce((s,p)=>s+(p.v||0),0),
+    sent:  items.reduce((s,p)=>s+(p.sentValue||0),0),
+    tech:  items.reduce((s,p)=>s+(p.techValue||0),0),
+    fin:   items.reduce((s,p)=>s+(p.finValue||0),0),
+    cost:  items.reduce((s,p)=>s+(p.cost||0),0),
+  };
+}
+
+let gaugeChart;
+function buildGauge(){
+  const items = getFilteredItemsForGauge();
+  const data = computeGaugeData(items);
+  const stage = STAGE_INFO[gaugeState.mode];
+  const stageValue = data[gaugeState.mode] || 0;
+
+  const pct = data.value > 0 ? stageValue / data.value : 0;
+  const color = stage.color;
+
+  document.getElementById("gaugePct").textContent = pctF(pct);
+  document.getElementById("gaugePct").style.color = color;
+  document.getElementById("gaugePctLbl").textContent = stage.label.replace(/^[^\s]+\s/,'');
+  document.getElementById("gaugeMoney").textContent = `${enNum(stageValue,0)} M`;
+
+  document.getElementById("gaugeTotalValue").textContent = `${enNum(data.value,0)} M`;
+  document.getElementById("gaugeStageLbl").textContent = stage.label;
+  document.getElementById("gaugeStageValue").textContent = `${enNum(stageValue,0)} M`;
+
+  const diffSentTech = data.sent - data.tech;
+  const diffTechFin  = data.tech - data.fin;
+
+  document.getElementById("diffSentTechVal").textContent = `${enNum(diffSentTech,0)} M`;
+  document.getElementById("diffSentTechSub").textContent =
+    diffSentTech > 0 ? `درگیر تاییدیه فنی — ${pctF(diffSentTech/data.value)} از ارزش کل` : "تایید فنی کامل ✓";
+
+  document.getElementById("diffTechFinVal").textContent = `${enNum(diffTechFin,0)} M`;
+  document.getElementById("diffTechFinSub").textContent =
+    diffTechFin > 0 ? `درگیر تاییدیه مالی — ${pctF(diffTechFin/data.value)} از ارزش کل` : "تایید مالی کامل ✓";
+
+  const cardST = document.getElementById("diffSentTech");
+  const cardTF = document.getElementById("diffTechFin");
+  cardST.classList.remove("highlight","danger");
+  cardTF.classList.remove("highlight","danger");
+
+  const pctST = data.value ? diffSentTech/data.value : 0;
+  const pctTF = data.value ? diffTechFin/data.value : 0;
+
+  if(pctST > 0.3) cardST.classList.add("danger");
+  else if(pctST > 0.15) cardST.classList.add("highlight");
+  if(pctTF > 0.3) cardTF.classList.add("danger");
+  else if(pctTF > 0.15) cardTF.classList.add("highlight");
+
+  document.getElementById("diffSentTechVal").className = "diff-val num " + (pctST > 0.3 ? "red" : pctST > 0.15 ? "orange" : "");
+  document.getElementById("diffTechFinVal").className = "diff-val num " + (pctTF > 0.3 ? "red" : pctTF > 0.15 ? "orange" : "");
+
+  if(gaugeChart) gaugeChart.destroy();
+  gaugeChart = new Chart(document.getElementById("gaugeChart"), {
+    type:"doughnut",
+    data:{
+      labels:[stage.label, "باقی‌مانده"],
+      datasets:[{
+        data:[pct*100, (1-pct)*100],
+        backgroundColor:[color, "rgba(51,65,85,.5)"],
+        borderColor:[color, "rgba(51,65,85,.8)"],
+        borderWidth:2,
+        circumference:180, rotation:270, cutout:"72%",
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=> c.dataIndex===0 ? `${stage.label}: ${pctF(pct)}` : `باقی‌مانده: ${pctF(1-pct)}`}}
+      }
+    }
+  });
+}
+buildGauge();
+
+gaugeGroupFilter.addEventListener("change", e=>{ gaugeState.group = e.target.value; buildGauge(); });
+document.getElementById("gaugeEmployerFilter").addEventListener("change", e=>{ gaugeState.employer = e.target.value; buildGauge(); });
+document.querySelectorAll("#gaugeModeTabs button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#gaugeModeTabs button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    gaugeState.mode = b.dataset.mode;
+    buildGauge();
+  });
+});
+
+const intGroups = {};
+INTERNAL.forEach(p=>{
+  if(!intGroups[p.g]) intGroups[p.g] = {name:p.g, items:[]};
+  intGroups[p.g].items.push(p);
+});
+const avgExp = INTERNAL.reduce((s,p)=>s+p.expected,0)/INTERNAL.length;
+const avgAct = INTERNAL.reduce((s,p)=>s+p.actual,0)/INTERNAL.length;
+const delayed = INTERNAL.filter(p=>p.actual < p.expected - 0.1).length;
+document.getElementById("kpiGridInternal").innerHTML = `
+  <div class="kpi p"><div class="kpi-icon">📋</div><div class="kpi-label">تعداد پروژه‌های درون‌سازمانی</div><div class="kpi-value">${enNum(INTERNAL.length,0)} <small>پروژه</small></div><div class="kpi-sub">در ${enNum(Object.keys(intGroups).length,0)} گروه</div></div>
+  <div class="kpi"><div class="kpi-icon">🎯</div><div class="kpi-label">میانگین پیشرفت مورد انتظار</div><div class="kpi-value num">${pctF(avgExp)}</div></div>
+  <div class="kpi g"><div class="kpi-icon">📈</div><div class="kpi-label">میانگین پیشرفت فعلی</div><div class="kpi-value num">${pctF(avgAct)}</div></div>
+  <div class="kpi r"><div class="kpi-icon">⚠️</div><div class="kpi-label">پروژه‌های دارای تأخیر</div><div class="kpi-value">${enNum(delayed,0)} <small>پروژه</small></div></div>
+`;
+
+Chart.defaults.font.family = "Vazirmatn, Tahoma, sans-serif";
+Chart.defaults.color = "#94a3b8";
+Chart.defaults.borderColor = "rgba(51,65,85,.5)";
+
+const groupNames = FIXED_GROUPS.filter(g=>groups[g].count > 0);
+const groupColors = ["#38bdf8","#22d3ee","#a78bfa","#ec4899","#f97316","#22c55e","#eab308","#ef4444","#14b8a6","#8b5cf6","#f43f5e"];
+
+const monthlyFilter = document.getElementById("monthlyGroupFilter");
+FIXED_GROUPS.forEach(g=>{
+  const opt = document.createElement("option");
+  opt.value = g; opt.textContent = g;
+  monthlyFilter.appendChild(opt);
+});
+
+let chartMonthly;
+let monthlyState = { group:"all", mode:"forecast" };
+
+function buildChartMonthly(){
+  const data = monthlyState.mode === "forecast"
+    ? (monthlyState.group === "all" ? MONTHLY_ALL_FORECAST : MONTHLY_FORECAST_BY_GROUP[monthlyState.group])
+    : (monthlyState.group === "all" ? MONTHLY_ALL_ACTUAL : MONTHLY_ACTUAL_BY_GROUP[monthlyState.group]);
+  if(!data) return;
+
+  if(chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(document.getElementById("chartMonthly"), {
+    type:"bar",
+    data:{
+      labels: MONTHS,
+      datasets:[
+        {label:"درآمد", data: data.income, backgroundColor:"rgba(34,197,94,.8)", borderColor:"#22c55e", borderWidth:2, borderRadius:6},
+        {label:"هزینه", data: data.cost, backgroundColor:"rgba(239,68,68,.8)", borderColor:"#ef4444", borderWidth:2, borderRadius:6},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:"top",labels:{color:"#ffffff", boxWidth:16, font:{size:13, weight:"700"}, padding:16}},
+        tooltip:{titleColor:"#ffffff", bodyColor:"#ffffff",callbacks:{label:c=>`${c.dataset.label}: ${enNum(c.raw,0)} م.ر`}}
+      },
+      scales:{
+        y:{beginAtZero:true, grid:{color:"rgba(51,65,85,.3)"}, ticks:{color:"#94a3b8", callback:v=>enNum(v,0)}},
+        x:{grid:{display:false}, ticks:{color:"#e2e8f0", font:{size:11, weight:"600"}}}
+      }
+    }
+  });
+}
+buildChartMonthly();
+
+monthlyFilter.addEventListener("change", e=>{ monthlyState.group = e.target.value; buildChartMonthly(); });
+document.querySelectorAll("#toggleMonthly button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#toggleMonthly button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    monthlyState.mode = b.dataset.mode;
+    buildChartMonthly();
+  });
+});
+
+let chartGroup;
+function buildChartGroup(mode){
+  const data = mode==="value" ? groupNames.map(g=>groups[g].totalValue) : groupNames.map(g=>groups[g].count);
+  if(chartGroup) chartGroup.destroy();
+  chartGroup = new Chart(document.getElementById("chartGroup"),{type:"bar",data:{labels:groupNames,datasets:[{data,backgroundColor:groupColors.slice(0,groupNames.length).map(c=>c+"99"),borderColor:groupColors.slice(0,groupNames.length),borderWidth:2,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>mode==="value"?enNum(c.raw,0)+" م.ر":enNum(c.raw,0)+" قرارداد"}}},scales:{y:{beginAtZero:true,grid:{color:"rgba(51,65,85,.3)"},ticks:{callback:v=>enNum(v,0)}},x:{grid:{display:false},ticks:{font:{size:9}}}}}});
+}
+buildChartGroup("value");
+document.querySelectorAll("#toggleGroup button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#toggleGroup button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); buildChartGroup(b.dataset.mode);
+  });
+});
+
+const EMP_CATS = ["دفترمرکزی","بنیاد استانها","شرکتها","سایر"];
+const empColors = ["#38bdf8","#22c55e","#a78bfa","#f97316"];
+let chartEmp;
+function buildChartEmp(mode){
+  const data = EMP_CATS.map(cat=>{
+    const items = RAW.filter(p=>p.ec===cat);
+    return mode==="value" ? items.reduce((s,p)=>s+(p.v||0),0) : items.length;
+  });
+  if(chartEmp) chartEmp.destroy();
+  chartEmp = new Chart(document.getElementById("chartEmployer"),{type:"bar",data:{labels:EMP_CATS,datasets:[{data,backgroundColor:empColors.map(c=>c+"99"),borderColor:empColors,borderWidth:2,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>mode==="value"?enNum(c.raw,0)+" م.ر":enNum(c.raw,0)+" قرارداد"}}},scales:{y:{beginAtZero:true,grid:{color:"rgba(51,65,85,.3)"},ticks:{callback:v=>enNum(v,0)}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+buildChartEmp("value");
+document.querySelectorAll("#toggleEmployer button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#toggleEmployer button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); buildChartEmp(b.dataset.mode);
+  });
+});
+
+let chartDep;
+function buildChartDep(mode){
+  const vab = RAW.filter(p=>p.et==="وابسته");
+  const ghey = RAW.filter(p=>p.et==="غیر وابسته");
+  const data = mode==="count" ? [vab.length, ghey.length] : [vab.reduce((s,p)=>s+(p.v||0),0), ghey.reduce((s,p)=>s+(p.v||0),0)];
+  if(chartDep) chartDep.destroy();
+  chartDep = new Chart(document.getElementById("chartDependency"),{type:"doughnut",data:{labels:["وابسته","غیروابسته"],datasets:[{data,backgroundColor:["rgba(34,197,94,.8)","rgba(56,189,248,.8)"],borderColor:["#22c55e","#38bdf8"],borderWidth:3,hoverOffset:10}]},options:{responsive:true,maintainAspectRatio:false,cutout:"55%",plugins:{legend:{position:"bottom",labels:{color:"#e2e8f0",boxWidth:14,font:{size:12},padding:14}},tooltip:{titleColor:"#ffffff",bodyColor:"#ffffff",callbacks:{label:c=>{const total = c.dataset.data.reduce((a,b)=>a+b,0)||1;const p = ((c.raw/total)*100).toFixed(1);return mode==="count" ? `${c.label}: ${enNum(c.raw,0)} قرارداد (${p}%)` : `${c.label}: ${enNum(c.raw,0)} م.ر (${p}%)`;}}}}}});
+}
+buildChartDep("count");
+document.querySelectorAll("#toggleDependency button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#toggleDependency button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); buildChartDep(b.dataset.mode);
+  });
+});
+
+const tabsEl = document.getElementById("tabs");
+const groupsEl = document.getElementById("groupsContainer");
+let currentFilter = "all";
+
+function buildTabs(){
+  tabsEl.innerHTML = `<button class="sub-tab active" data-g="all">📋 همه پروژه‌ها</button>`;
+  groupNames.forEach(g=>{
+    const b = document.createElement("button");
+    b.className = "sub-tab"; b.dataset.g = g; b.textContent = g;
+    tabsEl.appendChild(b);
+  });
+  bindTabs();
+}
+buildTabs();
+
+function bindTabs(){
+  document.querySelectorAll(".sub-tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      const parent = tab.closest('.view');
+      if(!parent) return;
+      parent.querySelectorAll(".sub-tab").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      parent.querySelectorAll(".group").forEach(g=>g.classList.remove("active"));
+      const g = tab.dataset.g;
+      if(g==="all") parent.querySelector("#grp-all")?.classList.add("active");
+      else parent.querySelector("#grp-"+slugify(g))?.classList.add("active");
+    });
+  });
+}
+
+function miniBar(value, colorClass, contractValueMil){
+  const p = Math.min(1, Math.max(0, value||0));
+  const milValue = (contractValueMil||0) * p;
+  return `<div class="mini-progress">
+    <span class="pct num">${pctF(p)}</span>
+    <div class="bar"><div class="fill ${colorClass}" style="width:${p*100}%"></div></div>
+    <div class="mil num">${enNum(milValue, 0)} M</div>
+  </div>`;
+}
+
+function applyFilter(items){
+  if(currentFilter==="all") return items;
+  return items.filter(p=>p.et===currentFilter || p.ec===currentFilter);
+}
+
+function renderGroup(g, idPrefix=""){
+  const grp = groups[g];
+  if(!grp || grp.count === 0) return "";
+  const filteredItems = applyFilter(grp.items);
+  const sumValue = filteredItems.reduce((s,p)=>s+(p.v||0),0);
+  const sumCost = filteredItems.reduce((s,p)=>s+(p.cost||0),0);
+  const sumOutRial = filteredItems.reduce((s,p)=>s+(p.outRial||0),0);
+  const sumOutPhys = filteredItems.reduce((s,p)=>s+(p.outPhys||0),0);
+  const people = filteredItems.reduce((s,p)=>s+(p.contractors?.length||0)+1,0);
+
+  const summaryHTML = `
+    <div class="group-summary">
+      <div class="gs-item"><div class="gs-lbl">ارزش قرارداد (م.ر)</div><div class="gs-val num">${enNum(sumValue, 0)}</div></div>
+      <div class="gs-item"><div class="gs-lbl">برون‌سپاری ریالی (م.ر)</div><div class="gs-val y num">${enNum(sumOutRial, 0)}</div></div>
+      <div class="gs-item"><div class="gs-lbl">برون‌سپاری فیزیکی (م.ر)</div><div class="gs-val g num">${enNum(sumOutPhys, 0)}</div></div>
+      <div class="gs-item"><div class="gs-lbl">هزینه کل ثبت‌شده (م.ر)</div><div class="gs-val o num">${enNum(sumCost, 0)}</div></div>
+      <div class="gs-item"><div class="gs-lbl">تعداد نفرات گروه</div><div class="gs-val p num">${enNum(people, 0)} نفر</div></div>
+    </div>`;
+
+  let rowsHTML = "";
+  filteredItems.forEach(p=>{
+    const detailId = `${idPrefix}det-${slugify(p.g)}-${p.r}`;
+    rowsHTML += `
+      <tr class="main-row" onclick="toggleDetail('${detailId}')">
+        <td class="row-num num">${enNum(p.r,0)}</td>
+        <td class="title-cell" title="${p.t}">${p.t}</td>
+        <td class="money num">${enNum(p.v, 0)}</td>
+        <td>${miniBar(p.prog,"phys", p.v)}</td>
+        <td>${miniBar(p.sent,"sent", p.v)}</td>
+        <td>${miniBar(p.tech,"tech", p.v)}</td>
+        <td>${miniBar(p.fin,"fin", p.v)}</td>
+        <td class="money num">${enNum(p.cost, 0)}</td>
+        <td>${ratioWithIcon(p.ratio)}</td>
+        <td>${extWarnIcon(p.ext)}</td>
+        <td style="text-align:center"><span class="btn-detail" style="font-size:14px">▾</span></td>
+      </tr>
+      <tr class="detail-row" id="${detailId}">
+        <td colspan="11">
+          <div class="detail-panel">
+            <div class="detail-section">
+              <h4>📄 اطلاعات قرارداد</h4>
+              <div class="detail-grid">
+                <div class="detail-item"><span class="lbl">شماره قرارداد</span><span class="val num">${p.n}</span></div>
+                <div class="detail-item"><span class="lbl">تاریخ قرارداد</span><span class="val num">${p.d}</span></div>
+                <div class="detail-item"><span class="lbl">کارفرما</span><span class="val">${p.k}</span></div>
+                <div class="detail-item"><span class="lbl">آخرین تمدید</span><span class="val num">${p.ext}</span></div>
+                <div class="detail-item"><span class="lbl">مدت قرارداد</span><span class="val num">${p.m} ماه</span></div>
+                <div class="detail-item"><span class="lbl">دسته کارفرما</span><span class="val">${p.ec}</span></div>
+                <div class="detail-item"><span class="lbl">مبلغ باقیمانده (م.ر)</span><span class="val num">${p.remain!==null && p.remain!==undefined ?enNum(p.remain,0):'—'}</span></div>
+                <div class="detail-item"><span class="lbl">نسبت هزینه به درآمد</span><span class="val num">${p.ratio!==null && p.ratio!==undefined ?(p.ratio*100).toFixed(2)+'%':'—'}</span></div>
+              </div>
+            </div>
+            <div class="detail-section">
+              <h4>🏗️ پیمانکاران (${enNum(p.contractors?.length||0,0)})</h4>
+              ${renderContractors(p.contractors||[])}
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  });
+
+  const emptyMsg = filteredItems.length===0 ? `<div style="padding:30px;text-align:center;color:#64748b;font-size:13px">هیچ موردی با این فیلتر یافت نشد</div>` : "";
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700">📁 ${g} <span style="font-size:11px;color:#94a3b8;font-weight:400">(${enNum(filteredItems.length,0)} قرارداد)</span></div>
+    </div>
+    ${summaryHTML}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">#</th>
+            <th style="width:20%">عنوان</th>
+            <th style="width:9%">مبلغ (م.ر)</th>
+            <th style="width:9%">پیشرفت فیزیکی</th>
+            <th style="width:9%">ارسال شده</th>
+            <th style="width:9%">تایید فنی</th>
+            <th style="width:9%">تایید مالی</th>
+            <th style="width:9%">هزینه (م.ر)</th>
+            <th style="width:8%">نسبت هزینه</th>
+            <th style="width:40px">تمدید</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody>${rowsHTML}${emptyMsg}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderContractors(list){
+  if(!list.length){
+    return `<div class="empty-hint">📭 هنوز پیمانکاری برای این قرارداد ثبت نشده</div>`;
+  }
+  return `<div>${list.map(c=>`<div>${c.name}</div>`).join("")}</div>`;
+}
+
+function toggleDetail(id){
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle("open");
+}
+function closeModal(){
+  document.getElementById("modalOverlay").classList.remove("open");
+}
+document.getElementById("modalOverlay").addEventListener("click",e=>{
+  if(e.target.id==="modalOverlay") closeModal();
+});
+
+function renderAllExternal(){
+  let html = `<div class="group active" id="grp-all">${groupNames.map(g=>renderGroup(g, "all-")).join("")}</div>`;
+  groupNames.forEach(g=>{
+    html += `<div class="group" id="grp-${slugify(g)}">${renderGroup(g, "grp-")}</div>`;
+  });
+  return html;
+}
+
+function rerenderExternal(){
+  groupsEl.innerHTML = renderAllExternal();
+  bindTabs();
+  tabsEl.querySelectorAll(".sub-tab").forEach(t=>t.classList.remove("active"));
+  tabsEl.querySelector('.sub-tab[data-g="all"]').classList.add("active");
+}
+rerenderExternal();
+
+document.getElementById("filterEmployerType").addEventListener("change", e=>{
+  currentFilter = e.target.value;
+  const filteredTotal = applyFilter(RAW).length;
+  document.getElementById("filterCount").textContent = `${enNum(filteredTotal,0)} / ${enNum(RAW.length,0)}`;
+  rerenderExternal();
+});
+document.getElementById("filterCount").textContent = `${enNum(RAW.length,0)} / ${enNum(RAW.length,0)}`;
+
+function statusBadge(exp, act){
+  const diff = act - exp;
+  if(diff >= -0.05) return `<span class="ratio good">✓ طبق برنامه</span>`;
+  if(diff >= -0.15) return `<span class="ratio warn">⚠ جزئی عقب</span>`;
+  return `<span class="ratio bad">✗ تأخیر</span>`;
+}
+
+function renderIntGroup(g){
+  const grp = intGroups[g];
+  if(!grp) return "";
+  let rowsHTML = "";
+  grp.items.forEach(p=>{
+    rowsHTML += `
+      <tr class="main-row">
+        <td class="row-num num">${enNum(p.r,0)}</td>
+        <td class="title-cell">${p.t}</td>
+        <td>${p.executor}</td>
+        <td>${miniBar(p.expected,"sent", 100)}</td>
+        <td>${miniBar(p.actual,"phys", 100)}</td>
+        <td>${statusBadge(p.expected, p.actual)}</td>
+      </tr>`;
+  });
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700">📁 ${g} <span style="font-size:11px;color:#94a3b8;font-weight:400">(${enNum(grp.items.length,0)} پروژه)</span></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th style="width:35%">عنوان</th>
+            <th style="width:18%">مجری</th>
+            <th style="width:14%">پیشرفت مورد انتظار</th>
+            <th style="width:14%">پیشرفت فعلی</th>
+            <th style="width:14%">وضعیت</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+    </div>`;
+}
+
+const internalTabsEl = document.getElementById("internalTabs");
+const internalGroupsEl = document.getElementById("internalGroupsContainer");
+const intGroupNames = FIXED_GROUPS.filter(g=>intGroups[g]);
+
+function buildInternalTabs(){
+  internalTabsEl.innerHTML = `<button class="sub-tab active" data-g="all">📋 همه پروژه‌ها</button>`;
+  intGroupNames.forEach(g=>{
+    const b = document.createElement("button");
+    b.className = "sub-tab"; b.dataset.g = g; b.textContent = g;
+    internalTabsEl.appendChild(b);
+  });
+  bindTabs();
+}
+
+function renderAllInternal(){
+  let html = `<div class="group active" id="grp-all">${intGroupNames.map(g=>renderIntGroup(g)).join("")}</div>`;
+  intGroupNames.forEach(g=>{
+    html += `<div class="group" id="grp-${slugify(g)}">${renderIntGroup(g)}</div>`;
+  });
+  return html;
+}
+
+buildInternalTabs();
+internalGroupsEl.innerHTML = renderAllInternal();
+bindTabs();
+
+document.querySelectorAll(".main-tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".main-tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+tab.dataset.view).classList.add("active");
+  });
+});
+</script>
+</body>
+</html>
